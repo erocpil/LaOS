@@ -2,7 +2,7 @@
  *
  * 功能：验证 ELF 加载 → EL0 入口 → SVC write/sleep/exit 完整链路。
  * 循环打印 + msleep 验证 SYS_SLEEP 和调度器交互。
- * P4-4: 页错误恢复测试（MAP_LAZY + 按需分页）— 当前仅 ARM64 支持。
+ * 页错误恢复测试（MAP_LAZY + 按需分页）。
  */
 
 #include <stdint.h>
@@ -10,7 +10,7 @@
 
 #include "user.lib.h"
 
-/* 系统调用包装（user.lib_arm64.c / user.lib.c 提供） */
+/* 系统调用包装由 user.lib.c 提供。 */
 int  write(int fd, const void *buf, unsigned long count);
 void exit(int status) __attribute__((noreturn));
 void yield(void);

@@ -1,8 +1,7 @@
-# 模块构建 —— 支持 x86_64 和 aarch64
+# x86_64 module build.
 #
 # 用法：
 #   make ARCH=x86_64                  (默认)
-#   make ARCH=aarch64 TOOLCHAIN=aarch64-linux-gnu
 
 ARCH ?= x86_64
 TOOLCHAIN ?=
@@ -38,10 +37,6 @@ ifeq ($(ARCH),x86_64)
     ARCH_CFLAGS := -m64 -mno-red-zone -mcmodel=kernel -mno-sse -mno-mmx
     LDFLAGS     := -m elf_x86_64
 endif
-ifeq ($(ARCH),aarch64)
-    ARCH_CFLAGS := -mcpu=generic -march=armv8-a+nofp+nosimd -mgeneral-regs-only
-    LDFLAGS     :=
-endif
 
 CFLAGS := $(SHARED_CFLAGS) $(ARCH_CFLAGS)
 
@@ -52,11 +47,6 @@ all: $(BINDIR)/module_abi.mo
 all: $(BINDIR)/test_tlb.mo
 all: $(BINDIR)/test_cpu_alive.mo
 all: $(BINDIR)/test_ipi_delivery.mo
-ifeq ($(ARCH),aarch64)
-all: $(BINDIR)/module_smp_probe.mo
-all: $(BINDIR)/test_init_fail.mo
-all: $(BINDIR)/test_fpu_arm64.mo
-endif
 ifeq ($(ARCH),x86_64)
 all: $(BINDIR)/thread_bar.elf
 all: $(BINDIR)/test_fpu_context.mo
@@ -77,7 +67,7 @@ $(BINDIR)/thread_bar.elf: $(OBJDIR)/thread_bar.o link.ld Makefile
 	$(LD) -n -T link.ld -o $@ $< -static
 endif
 
-# --- 2. module_foo (双架构 smoke module) ---
+# --- 2. module_foo ---
 $(BINDIR)/module_foo.mo: module_foo.c Makefile
 	mkdir -p "$(dir $@)"
 	$(CC) -c $< -o $@ $(CFLAGS)
@@ -89,11 +79,6 @@ $(BINDIR)/module_abi.mo: module_abi.c Makefile
 
 # Shared dependencies for all selftest modules.
 SELFTEST_DEPS := Makefile ../kernel/selftest.h
-ifeq ($(ARCH),aarch64)
-$(BINDIR)/module_smp_probe.mo: module_smp_probe.c Makefile
-	mkdir -p "$(dir $@)"
-	$(CC) -c $< -o $@ $(CFLAGS)
-endif
 
 $(BINDIR)/module_bad.mo: module_bad.c Makefile
 	mkdir -p "$(dir $@)"
@@ -107,17 +92,17 @@ $(BINDIR)/test_init_fail.mo: test_init_fail.c $(SELFTEST_DEPS)
 	mkdir -p "$(dir $@)"
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-# --- 5. test_tlb (dual-arch TLB shootdown selftest) ---
+# --- 5. test_tlb (TLB shootdown selftest) ---
 $(BINDIR)/test_tlb.mo: test_tlb.c $(SELFTEST_DEPS)
 	mkdir -p "$(dir $@)"
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-# --- 6. test_cpu_alive (dual-arch CPU alive selftest) ---
+# --- 6. test_cpu_alive selftest ---
 $(BINDIR)/test_cpu_alive.mo: test_cpu_alive.c $(SELFTEST_DEPS)
 	mkdir -p "$(dir $@)"
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-# --- 4. e1000 (多文件模块，双架构) ---
+# --- 4. e1000 multi-file module ---
 $(OBJDIR)/e1000.o: e1000.c Makefile
 	mkdir -p "$(dir $@)"
 	$(CC) -c $< -o $@ $(CFLAGS)
@@ -144,23 +129,7 @@ $(BINDIR)/test_fpu_context.mo: test_fpu_context.c $(SELFTEST_DEPS)
 	mkdir -p "$(dir $@)"
 	$(CC) -c $< -o $@ $(CFLAGS)
 endif
-# --- stress test (dual-arch scheduler stress selftest) ---
+# --- stress test ---
 $(BINDIR)/test_sched_stress.mo: test_sched_stress.c $(SELFTEST_DEPS)
 	mkdir -p "$(dir $@)"
 	$(CC) -c $< -o $@ $(CFLAGS)
-
-# --- 9. test_fpu_arm64 (ARM64 NEON context save/restore selftest) ---
-ifeq ($(ARCH),aarch64)
-$(OBJDIR)/test_fpu_arm64.o: test_fpu_arm64.c $(SELFTEST_DEPS)
-	mkdir -p "$(dir $@)"
-	$(CC) -c $< -o $@ $(CFLAGS)
-
-$(OBJDIR)/fpu_arm64_helpers.o: fpu_arm64_helpers.S Makefile
-	mkdir -p "$(dir $@)"
-	$(CC) -c $< -o $@ $(CFLAGS)
-
-$(BINDIR)/test_fpu_arm64.mo: $(OBJDIR)/test_fpu_arm64.o $(OBJDIR)/fpu_arm64_helpers.o Makefile
-	mkdir -p "$(dir $@)"
-	$(LD) -r $(OBJDIR)/test_fpu_arm64.o $(OBJDIR)/fpu_arm64_helpers.o -o $@ $(LDFLAGS)
-
-endif

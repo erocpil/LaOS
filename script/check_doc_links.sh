@@ -13,6 +13,7 @@ import sys
 ROOT = Path.cwd()
 DOCS = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
 errors = []
+X86_ONLY = not (ROOT / "kernel/arch/aarch64").exists()
 
 
 def github_slug(text):
@@ -116,9 +117,9 @@ for doc in DOCS:
             path = ROOT / raw
             if path.exists() or raw.endswith(generated_refs):
                 continue
-            # ARM64 implementation files intentionally do not exist on the
-            # x86_64 shared branch.
-            if raw.startswith("kernel/arch/aarch64/"):
+            # ARM64 process/design docs remain on the x86-only release branch,
+            # while their implementation files and scripts live on arm64.
+            if X86_ONLY and ("arm64" in raw.lower() or "aarch64" in raw.lower()):
                 continue
             source_line = text.splitlines()[line - 1].lower()
             if "linux" in source_line:
@@ -146,6 +147,8 @@ for doc in DOCS:
             target = token
             break
         if target and target not in make_targets:
+            if X86_ONLY and ("arm64" in target.lower() or "aarch64" in target.lower()):
+                continue
             errors.append(f"UNKNOWN MAKE TARGET: {rel_doc} -> {target}")
 
 if errors:

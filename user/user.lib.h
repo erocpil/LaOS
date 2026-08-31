@@ -7,7 +7,7 @@ void exit(int status);
 int write(int fd, const void *buf, unsigned long count);
 int msleep(unsigned int msec);
 
-/* mmap/munmap — syscall wrappers (currently aarch64 only) */
+/* mmap/munmap syscall wrappers. */
 void *mmap(uint64_t length, uint64_t prot, uint64_t flags);
 int munmap(uint64_t addr, uint64_t length);
 
