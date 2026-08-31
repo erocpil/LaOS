@@ -1,6 +1,6 @@
 # LaOS: Lyre and Orchestra Symphony
 
-[![CI](https://img.shields.io/github/actions/workflow/status/erocpil/LaOS-private/build.yml?branch=main)](https://github.com/erocpil/LaOS-private/actions/workflows/build.yml)
+[![CI](https://github.com/erocpil/LaOS/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/erocpil/LaOS/actions/workflows/build.yml)
 
 ![screenshot](screenshot.png)
 
