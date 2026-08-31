@@ -1,49 +1,44 @@
 # LaOS Documentation
 
-LaOS is a teaching kernel for x86_64. Start with the documents below;
-process notes and old reviews are supporting evidence, not the authoritative
-description of the current tree.
+LaOS is a teaching kernel for x86_64 and ARM64. The x86_64 branch contains the
+shared and x86_64 documentation baseline; the ARM64 branch extends it with its
+architecture implementation and narrative chapters.
 
 ## Start here
 
 - [Getting started](getting-started.md) — dependencies, first build, tests and troubleshooting.
-- [Test guide](testing-guide.md) — one entry point for every maintained test method and its detailed documentation.
-- [Current limitations](current-limitations.md) — current capability boundary.
+- [Test guide](testing-guide.md) — maintained test methods and detailed documentation.
+- [Current limitations](current-limitations.md) — authoritative capability boundary.
 - [Task configuration DSL](task-conf-dsl.md) — modules, users and selftests declared in `task.conf`.
+- [Branch strategy](process/branch-strategy.md) — shared-first multi-architecture workflow.
 
 ## Design and implementation notes
 
-- Storage subsystem:
-  - [Tutorial: follow a LaFS read to virtio-blk](design/storage/storage-tutor.md)
-  - [Architecture: contracts, invariants and limits](design/storage/storage-arch.md)
-- Kernel modules:
-  - [Tutorial: build, relocate and run a module](design/module/module-tutor.md)
-  - [Architecture: loader transaction and ABI boundary](design/module/module-arch.md)
-- Testing:
-  - [Entry: find the right test and its documentation](testing-guide.md)
-  - [Tutorial: choose and interpret LaOS tests](design/testing/testing-tutor.md)
-  - [Architecture and coverage matrix](design/testing/testing-arch.md)
-- RCU:
-  - [Tutorial: readers, grace periods and reclamation](design/sync/rcu-tutor.md)
-  - [Architecture: state, hooks, ordering and test boundary](design/sync/rcu-arch.md)
-- Scheduler:
-  - [Architecture: fixed priorities, queue migration and switch-layout ABI](design/scheduler/scheduler-arch.md)
-- Mutex:
-  - [Architecture: raw/handoff policy, ordered waiters and priority inheritance](design/sync/mutex-design.md)
-- TTY and monitor:
-  - [Tutorial: framebuffer pages, monitor views and input](design/tty/tty-tutor.md)
-  - [Architecture: rendering, visibility and platform boundary](design/tty/tty-arch.md)
-- Diagnostics and exceptions:
-  - [Tutorial: logs, fault decoding, symbolisation and panic](design/diagnostics/diagnostics-tutor.md)
-  - [Architecture: exception routing and crash-path limits](design/diagnostics/diagnostics-arch.md)
-- [VMM review](vmm-review.md)
+- Storage: [tutorial](design/storage/storage-tutor.md) and [architecture](design/storage/storage-arch.md)
+- Kernel modules: [tutorial](design/module/module-tutor.md) and [architecture](design/module/module-arch.md)
+- Testing: [entry](testing-guide.md), [tutorial](design/testing/testing-tutor.md) and [architecture](design/testing/testing-arch.md)
+- RCU: [tutorial](design/sync/rcu-tutor.md) and [architecture](design/sync/rcu-arch.md)
+- Scheduler: [architecture](design/scheduler/scheduler-arch.md)
+- Mutex: [architecture](design/sync/mutex-design.md)
+- TTY and monitor: [tutorial](design/tty/tty-tutor.md) and [architecture](design/tty/tty-arch.md)
+- Diagnostics: [tutorial](design/diagnostics/diagnostics-tutor.md), [architecture](design/diagnostics/diagnostics-arch.md) and [x86_64 exception details](design/diagnostics/exception-handler.md)
 
-## Historical process records
+## Process and historical records
 
-Files named as reviews, fix summaries, plans or dated discussions are snapshots
-of a particular development stage. They may mention removed paths or completed
-limitations. Use [current limitations](current-limitations.md) for current
-status and Git history when exact provenance matters.
+Files under `process/` record a particular development stage or maintainer
+workflow. Reviews, fix summaries and plans may mention removed paths or
+completed limitations. Use [current limitations](current-limitations.md) for
+current status and Git history when exact provenance matters.
 
-- [Resolved issues and review archive](known-issues.md)
-- [Coding style](coding-style.md)
+- [Branch strategy](process/branch-strategy.md)
+- [Coding style](process/coding-style.md)
+- [Multi-architecture strategy](process/multi-arch-strategy.md)
+- [ARM64 development setup](process/arm64-dev-setup.md)
+- [ARM64 porting diary](process/arm64-port_zh.md)
+- [ARM64 e1000 interrupt roadmap](process/arm64-e1000-interrupt-roadmap.md)
+- [ARM64 code review (2026-07-17)](process/arm64-code-review-2026-07-17.md)
+- [M3a EL0 fix summary](process/m3a-el0-fix-summary.md)
+- [VMM review](process/vmm-review.md)
+- [Resolved issues archive](process/known-issues.md)
+- [Codex review](process/codex-review_zh.md) and [fix summary](process/codex-fixes_zh.md)
+- [Dated discussions](process/discussions/2026-07-16-meaning-and-direction.md)

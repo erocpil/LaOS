@@ -3,7 +3,7 @@
 > **归档说明（2026-07-25）**
 >
 > 本文同时保存已修复问题和阶段性审查记录，不再作为当前能力边界的
-> 唯一来源。当前限制请以 [current-limitations.md](current-limitations.md)
+> 唯一来源。当前限制请以 [current-limitations.md](../current-limitations.md)
 > 为准；本文中的状态描述应结合所在段落日期和 Git 历史阅读。
 
 按"发现日期 + 优先级"列出。不改即记，等具体优化任务把它们带上。

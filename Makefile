@@ -9,9 +9,9 @@
 #   make iso        组 LaOS.iso（隐式依赖 kernel/user/module）
 #   make run        iso + qemu
 #   make test-x86_64  CI 冒烟：x86_64 构建+QEMU 启动验证（KVM 快）
-#   make test-arm64   当前工作树未包含 aarch64 代码，目标会明确跳过
-#   make test-riscv64 当前工作树未包含 riscv64 代码，目标会明确跳过
-#   make test-all     运行 x86_64 回归；缺失的架构目标会跳过
+#   make test-arm64   CI 冒烟：aarch64 交叉构建+QEMU 启动验证（TCG 慢）
+#   make test-riscv64 CI 冒烟：riscv64 交叉构建+QEMU 启动验证（TCG 慢）
+#   make test-all     三架构全跑（x86_64→aarch64→riscv64）
 #   make clean      递归 clean + rm -rf build/
 #   make distclean  clean + rm .cache compile_commands.json
 #   make help       打印目标清单
@@ -207,9 +207,11 @@ else
 endif
 endif
 
-# ---- test targets: x86_64 CI + 缺失架构占位目标 ----
-# 当前工作树仅包含 x86_64。aarch64/riscv64 目标保留为移植入口，
-# 在相应架构目录缺失时明确跳过，不能作为验证结果。
+# ---- test targets: 三架构 CI 冒烟 ----
+# 三层验证模型：
+#   第一层 x86_64 (KVM，2s) → 每次改动
+#   第二层 aarch64 (TCG，成功标志出现后立即退出) → 每次 git commit 前
+#   第三层 riscv64 (TCG，30-60s) → 架构移植 session 中
 # 成功条件：serial log 含 "LaOS is running"
 TEST_TIMEOUT_x86_64 := 15
 TEST_TIMEOUT_riscv64 := 120
@@ -532,7 +534,7 @@ help:
 	@echo "  make test-x86_64-sched-stress  x86_64 scheduler stress (4 CPUs)"
 	@echo "  make test-x86_64-rcu-stress  x86_64 configurable preemptible-RCU stress"
 	@echo "  make test-x86_64-multiuser  x86_64 multi-user tasks"
-	@echo "  make test-arm64    placeholder: skipped while kernel/arch/aarch64 is absent"
+	@echo "  make test-arm64    CI smoke: -kernel direct boot (SMP + e1000 + user ELF)"
 	@echo "  make test-arm64-limine               Limine UEFI: module ABI + EL0 task chain"
 	@echo "  make test-arm64-limine-negative      Limine UEFI: reject bad module, then continue"
 	@echo "  make test-arm64-limine-rollback      Limine UEFI: module init failure rollback"
@@ -541,11 +543,11 @@ help:
 	@echo "  make test-arm64-limine-fpu           Limine UEFI: FPU/SIMD selftest"
 	@echo "  make test-arm64-limine-sched-stress  Limine UEFI: scheduler stress (4 CPUs)"
 	@echo "  make test-arm64-limine-multiuser     Limine UEFI: multi-user tasks"
-	@echo "  make test-riscv64  placeholder: skipped while kernel/arch/riscv64 is absent"
-	@echo "  make test-all      run x86_64 regressions; absent architecture targets skip"
+	@echo "  make test-riscv64  CI smoke: cross-build + QEMU boot check (TCG, ~60s)"
+	@echo "  make test-all      run all three arch tests in order"
 	@echo ""
 	@echo "  make clean        wipe build artifacts (build/ + bin-*/ + obj-*/)"
 	@echo "  make distclean     clean + .cache + compile_commands.json"
 	@echo ""
 	@echo "Variables:"
-	@echo "  ARCH=$(ARCH)  (implemented here: x86_64; aarch64/riscv64 are placeholders)"
+	@echo "  ARCH=$(ARCH)  (supported: x86_64, aarch64, riscv64)"

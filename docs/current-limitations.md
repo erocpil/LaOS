@@ -1,22 +1,19 @@
 # Current Limitations
 
 This document is the authoritative user-facing summary of LaOS limitations.
-Historical defects and completed fixes remain available from the
-[documentation index](index.md); their path differs after ARM64 process
-documents are grouped under `docs/process/`.
+Historical defects and completed fixes remain available under `docs/process/`
+from the [documentation index](index.md). They are snapshots rather than the
+source of truth for current behavior.
 
 ## Architecture and platform
 
 - Automated coverage is QEMU-focused; real hardware compatibility is not
   established.
-- On x86_64, the BSP configures TSS IST stacks for fatal exceptions, but AP
-  IST setup is incomplete. Ordinary IRQs also execute on the interrupted
-  thread's kernel stack; per-CPU IRQ stacks are allocated but not yet used for
-  frame switching.
-- This working tree contains only the x86_64 architecture implementation.
-  `test-arm64` and `test-riscv64` are retained as placeholders and explicitly
-  skip when their architecture directories are absent; they do not provide
-  cross-architecture validation.
+- x86_64 fatal exceptions use TSS IST stacks, but ordinary IRQs still execute
+  on the interrupted thread's kernel stack. Per-CPU IRQ stacks are allocated
+  but not yet used for frame switching.
+- ARM64 has direct-boot and Limine paths with different feature coverage.
+- riscv64 is an experimental skeleton rather than a feature-parity port.
 
 ## Memory and process model
 

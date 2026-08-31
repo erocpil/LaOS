@@ -64,10 +64,11 @@ The TAP setup changes host networking and is not needed for the test targets.
 
 ## ARM64
 
-ARM64 implementation files are included in this checkout under
-`kernel/arch/aarch64/`:
+ARM64 implementation files live on the `arm64` branch under
+`kernel/arch/aarch64/`. Switch branches before running ARM64 targets:
 
 ```sh
+git switch arm64
 make test-arm64
 make test-arm64-limine
 make test-arm64-lafs
@@ -87,8 +88,9 @@ make test-arm64-limine-multiuser
 
 ## Before submitting a change
 
-For shared code, validate x86_64 first, then rebase ARM64 and run its relevant
-gate:
+For shared code, follow the [branch strategy](process/branch-strategy.md):
+validate and commit on x86_64 first, then rebase ARM64 and run its relevant
+gate.
 
 ```sh
 bash script/check_doc_links.sh

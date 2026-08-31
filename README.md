@@ -1,15 +1,10 @@
 # LaOS: Lyre and Orchestra Symphony
 
-[![CI](https://img.shields.io/github/actions/workflow/status/erocpil/LaOS/build.yml?branch=main)](https://github.com/erocpil/LaOS/actions/workflows/build.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/erocpil/LaOS-private/build.yml?branch=main)](https://github.com/erocpil/LaOS-private/actions/workflows/build.yml)
 
 ![screenshot](screenshot.png)
 
-LaOS 是面向 x86_64 的多核抢占式内核原型，专注 SMP 抢占同步与 selftest 驱动的持续验证。
-
-## Demo
-
-<!-- TODO: 录屏 mp4，上传到 GitHub issue 后把链接粘这里 -->
-_(demo video coming)_
+LaOS 是面向 x86_64 / ARM64 的多核抢占式内核原型，约 25,000 行 C 与汇编。不追求 POSIX 兼容，专注 SMP 抢占同步、跨架构移植与 selftest 驱动的持续验证。
 
 ## Design Highlights
 
@@ -17,12 +12,12 @@ _(demo video coming)_
 - **Linux 风格模块参数**。`MODULE_PARAM(var, type, desc)` 宏生成 `__laos_params` ELF 段，内核在加载模块时匹配 task.conf 的 `key=value` 对，直接写入模块全局变量——`main()` 执行时变量已是正确值，无手写解析代码。
 - **模块双向符号解析**。`.mo` 为独立 ELF，boot 时由 Limine 载入；`ksymtab` 同时支持 kernel 到 module 与 module 到 kernel 两个方向的符号解析。
 - **不变量运行期自检**。PMM 初始化末尾调用 `pmm_mark_protected`，reserved 或 ACPI 区若被错误释放即 panic；kheap 释放路径以物理邻接为前提判定块合并。
-- **Selftest 框架**。`@test` directive 驱动内置与 `.mo` 模块测试，支持 configure → prepare → start → tick → done → PASSED/FAILED 生命周期。CI 对 x86_64 执行基础 selftest 与 LaFS 真设备回归；仓库另提供 SMP TLB、FPU、调度压力、多用户、负向与回滚测试目标。
+- **Selftest 框架**。`@test` directive 驱动内置与 `.mo` 模块测试，支持 configure → prepare → start → tick → done → PASSED/FAILED 生命周期。CI 对 x86_64 执行基础 selftest 与 LaFS 真设备回归，对 ARM64 执行 Limine 基础回归；仓库另提供 SMP TLB、FPU、调度压力、多用户、负向与回滚测试目标。
 
 ## Features
 
-- **Boot**: Limine 引导（x86_64 BIOS/UEFI），SMP 多核启动。
-- **MM**: bitmap first-fit PMM，4 级页表 per-task PML4，带邻接合并的链表 kheap；VMA 虚拟内存区域跟踪，mmap/munmap + 按需分页；页故障恢复——not-present 按需分配，权限违规/越界终止用户进程。
+- **Boot**: Limine 引导（x86_64 BIOS/UEFI，ARM64 UEFI），SMP 多核启动。
+- **MM**: bitmap first-fit PMM，4 级页表 per-task PML4，带邻接合并的链表 kheap；VMA 虚拟内存区域跟踪，mmap/munmap + 按需分页（两架构）；页故障恢复——not-present 按需分配，权限违规/越界终止用户进程。
 - **Sched**: 内核态可抢占，64 级静态优先级、同级轮转、已入队优先级迁移、睡眠唤醒，以及 mutex 单跳优先级继承（多锁 donation 聚合）。
 - **RCU**: 读侧免锁，`gp_seq` / `blocked_tasks` 两阶段推进显式宽限期。
 - **Module**: `main(argc, argv)` 入口，`MODULE_PARAM(int/string/bool)` 编译期声明参数，task.conf 中 `key=value` 加载期写回变量。append-only 注册表支持 FREE/RESERVED/COMMITTED 三态安全回滚。
@@ -30,9 +25,12 @@ _(demo video coming)_
 - **Net**: e1000 驱动，12 路 MMIO 硬件计数器 + 软件计数器。
 - **TTY**: TTY 0 为控制台，TTY 6-9 为 live monitor（CPU / NET / RCU / PMM），0.5-1 Hz 刷新。
 - **User**: crt0 + syscall（mmap / munmap / write / exit / yield）+ CPIO initrd 动态加载用户程序 + `task.conf` 驱动用户态进程。
-- **Storage**: virtio-blk 轮询驱动（x86_64 通过 virtio-pci）；LaFS 只读文件系统——magic 校验、superblock、inode 链表、间接块索引、目录遍历。
+- **ARM64**: 双启动路径 — Limine UEFI（全功能：模块加载、task.conf、FPU/SIMD selftest、多用户进程、调度压力测试）与直启 `-kernel`（轻量：SMP、e1000、CPIO initrd 用户程序、基础 selftest）；GICv3 + Timer + MSI/MSI-X (ITS)；EL0 用户态 SVC 往返；virtio-blk 轮询驱动 + LaFS 只读文件系统。
+- **Storage**: virtio-blk 轮询驱动——ARM64 通过 MMIO（QEMU virt），x86_64 通过 virtio-pci；LaFS 只读文件系统——magic 校验、superblock、inode 链表、间接块索引、目录遍历。两架构均提供真设备挂载回归目标。
 
 ## Build & Run
+
+### x86_64
 
 ```bash
 git submodule update --init --recursive
@@ -42,7 +40,32 @@ make run                              # qemu: -smp 4 -device e1000 -netdev tap
 sudo ./script/setup_host_net.sh down  # 清理 tap0
 ```
 
-依赖: `gcc`、`nasm`、`xorriso`、`qemu-system-x86_64`。
+### ARM64（交叉编译，Limine UEFI）
+
+ARM64 架构实现位于 `arm64` 分支。先切换分支，再执行以下命令：
+
+```bash
+git switch arm64
+# 依赖: gcc-aarch64-linux-gnu, qemu-system-aarch64
+make iso-limine-arm64                 # 编译,生成 build/LaOS-arm64-limine.iso
+
+# 启动 QEMU
+qemu-system-aarch64 \
+    -M virt,gic-version=3 -cpu cortex-a57 -m 512M -smp 1 \
+    -drive if=pflash,format=raw,readonly=on,file=/usr/share/AAVMF/AAVMF_CODE.fd \
+    -cdrom build/LaOS-arm64-limine.iso \
+    -display none -serial stdio -monitor none -no-reboot
+
+# 自动化测试
+make test-arm64                       # 直启 QEMU 冒烟
+make test-arm64-limine                # Limine 基础回归（模块→EL0→恢复链）
+make test-arm64-limine-smp-tlb        # SMP TLB shootdown 门禁
+make test-arm64-limine-fpu            # FPU/SIMD selftest
+make test-arm64-limine-multiuser      # 多用户进程
+```
+
+x86_64 依赖: `gcc`、`nasm`、`xorriso`、`qemu-system-x86_64`。<br>
+ARM64 额外依赖: `gcc-aarch64-linux-gnu`、`qemu-system-aarch64`、`AAVMF_CODE.fd`（edk2 固件，Ubuntu: `apt install qemu-efi-aarch64`）。
 
 ## Documentation
 
@@ -51,12 +74,16 @@ sudo ./script/setup_host_net.sh down  # 清理 tap0
 [Current Limitations](docs/current-limitations.md) 为准。查找测试目标及其
 具体方法时，从 [测试入口](docs/testing-guide.md) 开始。
 
+`arm64` 分支另包含 ARM64 架构代码，以及按 Book / Design / Process 三层
+扩展的教学与移植文档。
+
 ## Layout
 
 ```
 conf/    声明式任务清单
 kernel/  内核调度，同步，页表，计数采集
   arch/x86_64/     x86_64 架构代码
+  arch/aarch64/    ARM64 架构代码（仅 arm64 分支）
 module/  可加载模块（e1000、selftest 载荷）
 user/    用户态运行时与测试程序
 script/  宿主机脚本
@@ -68,12 +95,13 @@ docs/    教学文档（book + design + process）
 完整、持续维护的列表见
 [docs/current-limitations.md](docs/current-limitations.md)。摘要如下：
 
-- **x86_64 中断栈隔离延后**：致命异常（#DF、NMI、#MC）使用 TSS IST 独立栈；per-CPU 中断栈已分配（8KB），但实际切换与 `switch_to` 的交互尚未处理完，暂继续复用被抢占线程的 kernel stack。
+- **x86_64 中断栈隔离延后**：致命异常（#DF、NMI、#MC）使用 TSS IST 独立栈；per-CPU 中断栈已分配（8KB），但实际切换与 `switch_to` 的交互尚未处理完，暂继续复用被抢占线程的 kernel stack。ARM64 的 `SAVE_ALL`/`RESTORE_ALL` 天然封装中断帧，无此问题。
 - **PMM 单一全局锁**：无 per-CPU 缓存或并发分区。
 - **RCU 仅同步回收**：未提供 `call_rcu` 异步回调。
 - **模块符号仅按名查找**：不校验签名版本，旧 `.mo` 载入行为未定义。
 - **无 TCP/IP 协议栈**：e1000 仅到 MMIO 收发与计数器层面。
-- **存储**：virtio-blk 轮询驱动 + LaFS 只读文件系统，尚无写入路径。
+- **存储**：x86_64 与 ARM64 均有 virtio-blk 轮询驱动 + LaFS 只读文件系统，但尚无写入路径。
+- **ARM64 Limine**：模块→EL0→恢复链已稳定通过；SMP bring-up 已完成（AP park/release/GIC/timer/idle），TLB shootdown remap 可见性已验证；调度压力测试（4 worker × 200 rounds，4 CPU）已在 ARM64 和 x86_64 双架构通过。riscv64 仅有目录骨架。
 
 ## License
 

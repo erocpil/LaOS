@@ -297,7 +297,7 @@ sed -i 's/CONFIG_EXCEPTION_TEST 1/CONFIG_EXCEPTION_TEST 0/' kernel/config.h
 | `obj-<arch>/generated/<output>/kallsyms_all.c` | 架构/输出私有的生成符号表，避免并行构建竞态 |
 | `script/gen_kallsyms.sh` | `nm -n` 提取全部函数符号，生成 C 数组 |
 | `kernel.mk` | `-fno-omit-frame-pointer` + `-fno-optimize-sibling-calls`； 两遍链接规则 |
-| `docs/exception-handler.md` | 本文档 |
+| `docs/design/diagnostics/exception-handler.md` | 本文档 |
 
 ## 设计决策与坑
 

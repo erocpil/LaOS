@@ -1,8 +1,10 @@
 # LaOS CI — build + runtime regression
 #
-# x86_64:  构建 ISO + make test-x86_64（KVM 启动 + selftest 门禁）
+# x86_64:  构建 ISO + make test-x86_64（KVM 启动 + 6 selftest 门禁）
+# ARM64:   交叉编译 Limine ISO + make test-arm64-limine（构建+模块ABI+启动回归）
 #
-# 依赖：nasm、xorriso、qemu-system-x86
+# 依赖：nasm、xorriso、qemu-system-{x86,aarch64}、qemu-efi-aarch64（AAVMF 固件）
+# ARM64 交叉编译器：gcc-aarch64-linux-gnu
 ---
 name: CI
 
@@ -59,3 +61,56 @@ jobs:
           set -x
           ls -lh build/LaOS.iso
           file bin-x86_64/kernel
+
+  # ── ARM64: 交叉编译 Limine ISO + 回归 ──
+  test-arm64-limine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: 检查 ARM64 架构目录（x86_64 分支无此目录则跳过）
+        id: check-arch
+        run: |
+          if [ -d kernel/arch/aarch64 ]; then
+            echo "have_arm64=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have_arm64=false" >> "$GITHUB_OUTPUT"
+            echo "=== SKIP: no kernel/arch/aarch64/ (x86_64-only branch) ==="
+          fi
+
+      - name: 安装构建依赖
+        if: steps.check-arch.outputs.have_arm64 == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            gcc-aarch64-linux-gnu \
+            xorriso \
+            qemu-system-aarch64 \
+            qemu-efi-aarch64
+
+      - name: 拉取三方头文件（freestnd-c-hdrs / limine-protocol / cc-runtime）
+        if: steps.check-arch.outputs.have_arm64 == 'true'
+        run: bash third_party/limine-c-template/kernel/get-deps
+
+      - name: 获取 Limine bootloader 二进制及编译宿主工具
+        if: steps.check-arch.outputs.have_arm64 == 'true'
+        run: |
+          cd third_party/limine-c-template
+          rm -rf limine-binary
+          curl -sL "https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz" \
+            | tar -xzf -
+          make -C limine-binary
+
+      - name: 构建 + 回归（make test-arm64-limine）
+        if: steps.check-arch.outputs.have_arm64 == 'true'
+        run: make test-arm64-limine 2>&1
+
+      - name: 产物确认
+        if: steps.check-arch.outputs.have_arm64 == 'true'
+        run: |
+          set -x
+          ls -lh build/LaOS-arm64-limine.iso
+          file bin-aarch64/kernel-limine
