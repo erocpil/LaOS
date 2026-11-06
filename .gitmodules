@@ -1,0 +1,4 @@
+[submodule "third_party/limine-c-template"]
+	path = third_party/limine-c-template
+	url = https://github.com/limine-bootloader/limine-c-template.git
+	ignore = untracked

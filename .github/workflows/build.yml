@@ -1,0 +1,111 @@
+# LaOS CI — build + runtime regression
+#
+# x86_64:  构建 ISO + make test-x86_64（KVM/TCG 启动 + selftest 门禁）
+# 本工作流仅运行 x86_64 构建与测试。
+#
+# 依赖：nasm、xorriso、qemu-system-x86
+---
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Docs: link checker ──
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check doc links and file references
+        run: bash script/check_doc_links.sh
+      - name: Check boot file and configuration contexts
+        run: make test-boot-context
+
+  # ── x86_64: 构建 + 运行时回归 ──
+  test-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Initialize build template submodule
+        run: git submodule update --init --recursive
+
+      - name: 安装构建依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nasm xorriso qemu-system-x86
+
+      - name: 选择 QEMU 加速器
+        run: |
+          if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
+            echo "X86_64_QEMU_ACCEL=kvm" >> "$GITHUB_ENV"
+          else
+            echo "X86_64_QEMU_ACCEL=tcg" >> "$GITHUB_ENV"
+          fi
+
+      - name: 拉取三方头文件（freestnd-c-hdrs / limine-protocol / cc-runtime）
+        run: bash third_party/limine-c-template/kernel/get-deps
+
+      - name: 获取 Limine bootloader 二进制及编译宿主工具
+        run: |
+          cd third_party/limine-c-template
+          rm -rf limine-binary
+          curl -sL "https://github.com/Limine-Bootloader/Limine/releases/latest/download/limine-binary.tar.gz" \
+            | tar -xzf -
+          make -C limine-binary
+
+      - name: Verify base, test, compatibility and expected-failure boot gates
+        run: make test-x86_64-boot-payload
+
+      - name: Verify modular runtime tests
+        run: make test-x86_64-runtime-modules test-x86_64-rcu-stress
+
+      - name: Upload boot-payload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86_64-boot-payload-failure-logs
+          path: |
+            build/base/**/*.log
+            build/mode-switch/**/*.log
+            build/serial.log
+            build/test-x86_64-*-qemu.log
+            build/test-x86_64-task-params-*.log
+            build/test-x86_64-rcu-stress*.log
+          if-no-files-found: ignore
+
+      - name: 构建 + 运行时回归（make test-x86_64）
+        id: test_x86_64
+        run: make test-x86_64 2>&1
+
+      - name: 上传 x86_64 失败日志
+        if: failure() && steps.test_x86_64.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86_64-qemu-failure-logs
+          path: |
+            build/serial.log
+            build/test-x86_64-qemu.log
+            build/test-x86_64-debugcon.log
+          if-no-files-found: ignore
+
+      - name: 构建 + LaFS 真设备回归（make test-x86_64-lafs）
+        run: make test-x86_64-lafs 2>&1
+
+      - name: 产物确认
+        run: |
+          set -x
+          ls -lh build/LaOS.iso
+          file bin-x86_64/kernel
